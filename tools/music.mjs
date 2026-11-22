@@ -94,7 +94,7 @@ async function releaseVideo(id, directory) {
   if (id === "mist") {
     await cp(new URL("../examples/mist/master.wav", import.meta.url), output);
   } else {
-    const input = new URL("../examples/releases/" + timeline.file, import.meta.url);
+    const input = new URL("../examples/releases/" + id + ".flac", import.meta.url);
     await promisify(execFile)("ffmpeg", ["-v", "error", "-y", "-i", input.pathname, "-c:a", "pcm_s16le", output]);
   }
   console.log(json({ directory, title: timeline.title, seconds: timeline.seconds }).trim());

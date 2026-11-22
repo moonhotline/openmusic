@@ -37,7 +37,7 @@ Bar ranges use inclusive, one-based numbers. To author another piece, pass a loc
 
 ## Original performances
 
-`examples/releases/arrangement.py` contains the notes, voicings and dynamics. `performances.ts` assigns the visual cues. The scored recordings use [VSCO 2 CE](https://github.com/sgossner/VSCO-2-CE/tree/440300901dfe9275fd84e0b7763af1f8443ae62e) at `440300901dfe`, published under CC0. To reproduce the masters, use Python with NumPy and SciPy, FFmpeg, and a checkout of those samples.
+`examples/releases/arrangement.py` defines the four-bar harmonic phrases, note ties and voicings. The renderer sustains the orchestral samples with crossfaded loops. `performances.ts` marks the musical sections and transition lengths for the GSAP timeline shared by the WebGL stage and HyperFrames. The recordings use [VSCO 2 CE](https://github.com/sgossner/VSCO-2-CE/tree/440300901dfe9275fd84e0b7763af1f8443ae62e) at `440300901dfe`, published under CC0. To reproduce the masters, use Python with NumPy and SciPy, FFmpeg, and a checkout of those samples.
 
 ```sh
 python examples/releases/render.py --samples /path/to/VSCO-2-CE --stems out/release-stems
@@ -50,7 +50,7 @@ The stem export contains aligned stereo WAVs, a room return and the note data. `
 
 ## Shared review
 
-Vercel builds the dependency-free static studio using `node tools/build.mjs`. The Cloudflare Worker implements a private shared workspace for the example. Build its three module files with `pnpm build:worker`. Bind `PROJECT` to the exported SQLite Durable Object class `MusicProject` and set `STUDIO_ORIGINS` to the exact studio origin. Configure distinct `AGENT_TOKEN` and `REVIEW_TOKEN` values of at least 24 characters as Worker secrets.
+Vercel builds the static stage and studio using `node tools/build.mjs`, which serves the pinned GSAP build locally. The Cloudflare Worker implements a private shared workspace for the example. Build its three module files with `pnpm build:worker`. Bind `PROJECT` to the exported SQLite Durable Object class `MusicProject` and set `STUDIO_ORIGINS` to the exact studio origin. Configure distinct `AGENT_TOKEN` and `REVIEW_TOKEN` values of at least 24 characters as Worker secrets.
 
 | Method | Path | Authorized role |
 | --- | --- | --- |

@@ -1,5 +1,6 @@
 """Render the release scores using VSCO 2 CE recordings and custom synth patches."""
 import argparse
+from dataclasses import asdict
 import json
 from pathlib import Path
 import re
@@ -26,8 +27,8 @@ RECORDINGS = {
 # Track gain, pan, low cut, room send.
 MIX = {
     "piano": (-2.3, -.16, 95, .21), "violin": (-1, .10, 190, .23),
-    "section": (-8.5, .32, 180, .27), "cello": (-6.5, -.31, 97, .20),
-    "horn": (-8, .13, 115, .21), "pad": (-9.5, 0, 125, .18), "arp": (-5.6, 0, 230, .16),
+    "section": (-8.3, .32, 180, .25), "cello": (-6.9, -.31, 91, .20),
+    "horn": (-9.4, .13, 115, .21), "pad": (-7.8, 0, 83, .16), "arp": (-6.5, 0, 230, .15),
     "bass": (-4.5, 0, 28, .015), "kick": (-3.6, 0, 27, .02),
     "snare": (-6.5, .04, 126, .21), "hat": (-13, .23, 4500, .08),
     "impact": (-7, 0, 28, .19), "riser": (-10.5, 0, 180, .20),
@@ -93,13 +94,47 @@ def sample_bank(directory):
     return bank
 
 
+def sustain_audio(audio, sr, frames, pitch):
+    # Keep the original attack. Extend the stable bow/tone before its recorded release.
+    end = min(int(sr * 2.15), int(len(audio) * .72))
+    if frames <= end:
+        return audio
+    start = min(int(sr * .48), end // 3)
+    overlap = min(int(sr * .11), end // 8)
+    period = min(round(sr / (440 * 2 ** ((pitch - 69) / 12))), start // 3)
+    left = start - period
+    candidates = audio[left:start + period + overlap].mean(axis=1)
+    previous = audio[end - overlap:end].mean(axis=1)
+    correlation = signal.correlate(candidates, previous, mode="valid", method="fft")
+    energy = np.convolve(candidates * candidates, np.ones(overlap, dtype=np.float32), mode="valid")
+    start = left + int(np.argmax(correlation / np.sqrt(np.maximum(energy, 1e-9))))
+    loop = audio[start:end]
+    blend = (.5 - .5 * np.cos(np.linspace(0, np.pi, overlap, dtype=np.float32)))[:, None]
+
+    sustained = np.empty((frames, audio.shape[1]), dtype=np.float32)
+    sustained[:end] = audio[:end]
+    filled = end
+    while filled < frames:
+        begin = filled - overlap
+        count = min(len(loop), frames - begin)
+        sustained[begin:filled] = sustained[begin:filled] * (1 - blend) + loop[:overlap] * blend
+        sustained[filled:begin + count] = loop[overlap:count]
+        filled = begin + count
+    return sustained
+
+
 def sampled_note(part, bank, midi, velocity, length, rng):
     records = bank[part]
     pitch, hard = min(records, key=lambda key: abs(key[0] - midi) + 2.5 * (key[1] != (velocity >= .64)))
     sr, audio = records[(pitch, hard)]
     shift = 2 ** ((midi - pitch + rng.uniform(-.024, .024)) / 12)
-    release = .18 if part in ("violin", "piano") else .24
-    count = min(round((length + release) * RATE), int((len(audio) - 1) / (sr * shift) * RATE))
+    release = .18 if part in ("violin", "piano") else .35
+    count = round((length + release) * RATE)
+    source_step = sr * shift / RATE
+    if part == "piano":
+        count = min(count, int((len(audio) - 1) / source_step))
+    else:
+        audio = sustain_audio(audio, sr, int((count - 1) * source_step) + 2, pitch)
     time = np.arange(count) / RATE
     at = time * sr * shift
     left = at.astype(np.intp)
@@ -108,18 +143,21 @@ def sampled_note(part, bank, midi, velocity, length, rng):
     attack = .008 if part == "piano" else .046 if part == "violin" else .07
     envelope = fade(time, attack) * fade(length + release - time, release) * fade(count / RATE - time, .06)
     if part != "piano":
-        envelope *= (.8 + .24 * np.sin(np.pi * np.minimum(1, time / max(.16, length))))
+        envelope *= .86 + .14 * np.sin(np.pi * np.minimum(1, time / max(.16, length)))
+        if length > 1.6:
+            envelope *= .94 + .06 * np.sin(2 * np.pi * (.23 * time + rng.uniform(0, 1)))
     return out * (velocity ** 1.22 * envelope[:, None] * (.9 if hard else .78))
 
 
 def synth_note(part, midi, velocity, length, rng):
-    t = np.arange(round((length + .20) * RATE)) / RATE
+    release = .64 if part == "pad" else .20
+    t = np.arange(round((length + release) * RATE)) / RATE
     f = 440 * 2 ** ((midi - 69) / 12)
     w = 2 * np.pi * t
     phase = rng.uniform(0, 2 * np.pi)
     sine = np.sin
     white = lambda cutoff, kind="bandpass": colored_noise(rng, len(t), cutoff, kind)
-    a = fade(t, .008) * fade(length + .2 - t, .20)
+    a = fade(t, .008) * fade(length + release - t, release)
     if part == "kick":
         fall = t * 48 + 59 * .029 * (1 - np.exp(-t / .029))
         x = .73 * np.tanh(1.55 * sine(2 * np.pi * fall)) * np.exp(-t * 12)
@@ -153,8 +191,8 @@ def synth_note(part, midi, velocity, length, rng):
         v = .018 * sine(w * .68) + .03 * sine(w * .21)
         carriers = [sum(sine(h * (w * f * tune + v) + phase * h) / h ** 1.64
                         for h in range(1, 11)) for tune in spread]
-        a *= fade(t, .205)
-        x = np.column_stack(carriers) * .20
+        a *= fade(t, .45) * (.88 + .12 * sine(w * .16 + phase))
+        x = np.column_stack(carriers) * .18
     return x * (a[:, None] if x.ndim == 2 else a) * velocity
 
 
@@ -220,7 +258,7 @@ def render(score, bank, destination, stems, target):
     folder = stems / score.title.lower() if stems else None
     if folder:
         folder.mkdir(parents=True, exist_ok=True)
-        (folder / "score.json").write_text(json.dumps(vars(score), ensure_ascii=False, indent=2), encoding="utf8")
+        (folder / "score.json").write_text(json.dumps(asdict(score), ensure_ascii=False, indent=2), encoding="utf8")
     for part in score.parts:
         take = render_track(score, part, count, bank)
         take[-len(stop):] *= stop

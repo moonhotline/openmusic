@@ -21,10 +21,11 @@ for (const directory of modules) {
 const assets = {
   "index.html": "apps/performance/index.html",
   "performance.css": "apps/performance/performance.css",
+  "gsap.min.js": "node_modules/gsap/dist/gsap.min.js",
   "studio/index.html": "apps/studio/index.html",
   "studio/studio.css": "apps/studio/studio.css",
-  "audio/faith.flac": "examples/releases/faith.flac",
-  "audio/agi.flac": "examples/releases/agi.flac",
+  "audio/faith-v2.flac": "examples/releases/faith.flac",
+  "audio/agi-v2.flac": "examples/releases/agi.flac",
   "audio/mist.wav": "examples/mist/master.wav",
   "prism-standby.webp": "apps/performance/prism-standby.webp",
   "prism-standby-portrait.webp": "apps/performance/prism-standby-portrait.webp",

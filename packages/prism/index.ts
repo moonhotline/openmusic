@@ -21,6 +21,9 @@ uniform float u_dispersion;
 uniform float u_intensity;
 uniform float u_reveal;
 uniform float u_surge;
+uniform float u_atmosphere;
+uniform float u_orbit;
+uniform float u_temperature;
 const float u_spin = 0.0;
 
 const float PI = 3.14159265359;
@@ -111,7 +114,7 @@ void main() {
   // Floating prism anchored cleanly in right-center golden focal zone
   vec2 bob = vec2(sin(t * 0.65) * 0.012, sin(t * 1.05) * 0.022);
   vec2 prismPos = mix(vec2(0.22 * aspect, -0.01), vec2(0.008, 0.13), narrow) + bob + u_pointer * vec2(0.032, -0.024);
-  float prismScale = mix(0.245, 0.158, narrow) * (0.86 + 0.14 * u_reveal);
+  float prismScale = mix(0.245, 0.158, narrow) * (0.86 + 0.14 * u_reveal) * (1.0 + u_atmosphere * 0.028);
 
   // Subtle rhythmic luxury breath synced to music tempo + GSAP hover surge
   float beatPhase = u_beat * 2.0 * PI;
@@ -121,13 +124,13 @@ void main() {
   vec3 col = mix(vec3(0.012, 0.018, 0.042), vec3(0.022, 0.034, 0.072), smoothstep(0.6, -0.55, uv.y));
   vec2 driftA = vec2(sin(t * 0.42) * 0.10, cos(t * 0.34) * 0.07);
   vec2 driftB = vec2(cos(t * 0.36) * 0.12, sin(t * 0.48) * 0.08);
-  col += vec3(0.03, 0.14, 0.28) * exp(-length((uv - prismPos + driftA) * vec2(0.8, 1.15)) * 2.2) * (0.85 + u_surge * 0.35);
-  col += vec3(0.20, 0.05, 0.28) * exp(-length(uv - prismPos - vec2(0.32, 0.08) + driftB) * 2.0) * (0.58 + u_surge * 0.35);
+  col += vec3(0.03, 0.14, 0.28) * exp(-length((uv - prismPos + driftA) * vec2(0.8, 1.15)) * 2.2) * (0.85 + u_surge * 0.35 + u_atmosphere * 0.18);
+  col += vec3(0.20, 0.05, 0.28) * exp(-length(uv - prismPos - vec2(0.32, 0.08) + driftB) * 2.0) * (0.58 + u_surge * 0.35 + u_atmosphere * 0.26);
 
   vec2 p2 = uv - prismPos;
 
   // Gentle 3D-like faceted tilt (keeps the iconic crystal triangle razor-sharp, never turning sideways)
-  float tilt = sin(t * 0.55) * 0.055 + u_pointer.x * 0.06 + u_spin * 0.08;
+  float tilt = sin(t * 0.55) * 0.055 + u_pointer.x * 0.06 + u_spin * 0.08 + u_orbit * 0.1;
   vec2 pt = rot2(tilt) * p2;
   // Back-depth offset creates true 3D crystal thickness / chamfered rear edge
   vec2 depthOff = vec2(0.042 + sin(t * 0.72) * 0.014 + u_pointer.x * 0.024, 0.022 + cos(t * 0.62) * 0.010 - u_pointer.y * 0.016) * (prismScale / 0.245);
@@ -303,7 +306,8 @@ void main() {
   float safeVeil = smoothstep(0.02 * aspect, -0.46 * aspect, uv.x);
   col = mix(col, col * 0.50 + vec3(0.010, 0.018, 0.038), safeVeil * 0.66);
 
-  col *= u_intensity;
+  vec3 tint = u_temperature > 0.0 ? vec3(1.18, 1.03, 0.91) : vec3(0.89, 1.07, 1.19);
+  col *= u_intensity * mix(vec3(1.0), tint, abs(u_temperature));
   col = acesFilm(col * 1.14);
 
   float grain = (hash21(gl_FragCoord.xy + fract(t) * 100.0) - 0.5) * 0.012;
@@ -313,8 +317,9 @@ void main() {
 }
 `
 
-type OpticalCue = { beat: number; preset: "mist" | "dispersion" };
-type Scene = { time: number; beat: number; dispersion: number; surge: number };
+type OpticalCue = { beat: number; preset: "mist" | "dispersion"; transitionBeats?: number };
+type Piece = { bpm: number; cues: readonly OpticalCue[]; look?: "warm" | "cool" };
+type Scene = { time: number; beat: number; dispersion: number; surge: number; atmosphere?: number; orbit?: number; temperature?: number };
 
 export function prismFrame(seconds: number, bpm: number, cues: readonly OpticalCue[], reducedMotion = false): Scene {
   const beat = Math.max(0, seconds) * bpm / 60;
@@ -333,6 +338,34 @@ export function prismFrame(seconds: number, bpm: number, cues: readonly OpticalC
     ? eased * Math.exp(-Math.max(0, beat - current.beat) / 0.95) * 0.52 : 0;
   return { time: reducedMotion ? 1.5 : 1.5 + seconds, beat: reducedMotion ? 0 : beat,
     dispersion: from + (target - from) * eased, surge: accent };
+}
+
+export function createPrismChoreography(animator: typeof import("gsap").gsap, piece: Piece) {
+  const { bpm, cues, look } = piece;
+  const temperature = look === "warm" ? 0.78 : look === "cool" ? -0.78 : 0;
+  function optics(open: boolean) {
+    return { dispersion: Number(open), atmosphere: open ? 0.92 : 0.06,
+      orbit: open ? (temperature < 0 ? -0.83 : 0.67) : 0 };
+  }
+
+  const state = optics(cues[0]?.beat === 0 && cues[0]?.preset === "dispersion");
+  const timeline = animator.timeline({ paused: true });
+  cues.forEach((cue, index) => {
+    if (cue.beat === 0) return;
+    const available = (cues[index + 1]?.beat ?? Infinity) - cue.beat;
+    timeline.to(state, { ...optics(cue.preset === "dispersion"),
+      duration: Math.min(cue.transitionBeats ?? 0.72, available) * 60 / bpm, ease: "sine.inOut" }, cue.beat * 60 / bpm);
+  });
+
+  return {
+    frame(seconds: number, reducedMotion = false): Scene {
+      const base = prismFrame(seconds, bpm, cues, reducedMotion);
+      if (reducedMotion) return { ...base, atmosphere: optics(base.dispersion === 1).atmosphere, temperature };
+      timeline.seek(seconds);
+      return { ...base, dispersion: state.dispersion, atmosphere: state.atmosphere, orbit: state.orbit, temperature };
+    },
+    kill() { timeline.kill(); },
+  };
 }
 
 function compile(gl: WebGLRenderingContext, kind: number, text: string) {
@@ -376,6 +409,9 @@ function connectPrism(gl: WebGLRenderingContext) {
   const dispersion = uniform("dispersion");
   const surge = uniform("surge");
   const reveal = uniform("reveal");
+  const atmosphere = uniform("atmosphere");
+  const orbit = uniform("orbit");
+  const temperature = uniform("temperature");
   gl.uniform1f(uniform("intensity"), 1.06);
 
   return (scene: Scene, width: number, height: number) => {
@@ -386,6 +422,9 @@ function connectPrism(gl: WebGLRenderingContext) {
     gl.uniform1f(dispersion, scene.dispersion);
     gl.uniform1f(reveal, 0.95 + scene.dispersion * 0.05);
     gl.uniform1f(surge, scene.surge);
+    gl.uniform1f(atmosphere, scene.atmosphere ?? 0);
+    gl.uniform1f(orbit, scene.orbit ?? 0);
+    gl.uniform1f(temperature, scene.temperature ?? 0);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
 }

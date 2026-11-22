@@ -1,6 +1,7 @@
-import { createPrism, prismFrame } from "../../packages/prism/index.ts";
+import { createPrism, createPrismChoreography, prismFrame } from "../../packages/prism/index.ts";
 import { performances } from "../../examples/releases/performances.ts";
 
+declare const gsap: typeof import("gsap").gsap | undefined;
 type TrackId = keyof typeof performances;
 const media = document.querySelector<HTMLAudioElement>("#master")!;
 const play = document.querySelector<HTMLButtonElement>("#play")!;
@@ -13,12 +14,22 @@ const canvas = document.querySelector<HTMLCanvasElement>("#prism")!;
 const motion = matchMedia("(prefers-reduced-motion: reduce)");
 const render = createPrism(canvas);
 const trackButtons = document.querySelectorAll<HTMLButtonElement>("[data-track]");
+const animation = typeof gsap === "undefined" ? undefined : gsap;
 let track: TrackId = "faith";
+let choreography = animation && createPrismChoreography(animation, performances[track]);
 let frame = 0;
 
 function draw() {
   const piece = performances[track];
-  render?.(prismFrame(media.currentTime, piece.bpm, piece.cues, motion.matches));
+  render?.(choreography?.frame(media.currentTime, motion.matches)
+    ?? prismFrame(media.currentTime, piece.bpm, piece.cues, motion.matches));
+}
+
+function revealTitle() {
+  animation?.killTweensOf(title);
+  if (motion.matches) animation?.set(title, { clearProps: "opacity,transform,filter" });
+  else animation?.fromTo(title, { opacity: 0, y: 12, filter: "blur(6px)" },
+    { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.65, ease: "power2.out", clearProps: "opacity,transform,filter" });
 }
 
 function formatTime(seconds: number) {
@@ -55,12 +66,15 @@ for (const option of trackButtons) option.addEventListener("click", () => {
   media.pause();
   track = next;
   const piece = performances[track];
+  choreography?.kill();
+  choreography = animation && createPrismChoreography(animation, piece);
   media.src = "/audio/" + piece.file;
   playhead.hidden = true;
   title.textContent = piece.title;
   notice.textContent = "";
   for (const button of trackButtons) button.setAttribute("aria-pressed", String(option === button));
   update();
+  revealTitle();
 });
 
 play.addEventListener("click", async () => {
@@ -81,6 +95,7 @@ media.addEventListener("loadedmetadata", () => {
 });
 for (const event of ["play", "pause", "ended", "seeking", "seeked"]) media.addEventListener(event, update);
 document.addEventListener("visibilitychange", update);
-motion.addEventListener("change", draw);
+motion.addEventListener("change", () => { revealTitle(); draw(); });
 new ResizeObserver(resize).observe(canvas);
 resize();
+revealTitle();

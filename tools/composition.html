@@ -22,9 +22,10 @@ __PRISM__
 const music = __TIMELINE__;
 const render = createPrism(document.getElementById("prism"));
 if (!render) throw new Error("WebGL is required for the prism composition");
+const choreography = createPrismChoreography(gsap, music);
 const cursor = { time: 0 };
 function draw() {
-  render(prismFrame(cursor.time, music.bpm, music.cues));
+  render(choreography.frame(cursor.time));
 }
 const timeline = gsap.timeline({ paused: true });
 timeline.to(cursor, { time: music.seconds, duration: music.seconds, ease: "none", onUpdate: draw });
