@@ -6,6 +6,9 @@ const media = document.querySelector<HTMLAudioElement>("#master")!;
 const play = document.querySelector<HTMLButtonElement>("#play")!;
 const title = document.getElementById("title")!;
 const notice = document.getElementById("notice")!;
+const playhead = document.getElementById("playhead")!;
+const position = document.querySelector<HTMLInputElement>("#position")!;
+const stamp = document.getElementById("stamp")!;
 const canvas = document.querySelector<HTMLCanvasElement>("#prism")!;
 const motion = matchMedia("(prefers-reduced-motion: reduce)");
 const render = createPrism(canvas);
@@ -18,6 +21,10 @@ function draw() {
   render?.(prismFrame(media.currentTime, piece.bpm, piece.cues, motion.matches));
 }
 
+function formatTime(seconds: number) {
+  return Math.floor(seconds / 60) + ":" + String(Math.floor(seconds % 60)).padStart(2, "0");
+}
+
 function resize() {
   const { clientWidth: width, clientHeight: height } = canvas;
   const scale = Math.min(devicePixelRatio || 1, 1.5, Math.sqrt(1_730_000 / Math.max(1, width * height)));
@@ -28,6 +35,11 @@ function resize() {
 
 function tick() {
   draw();
+  if (!playhead.hidden) {
+    position.value = String(media.currentTime);
+    const current = formatTime(media.currentTime) + " / " + formatTime(media.duration);
+    if (stamp.textContent !== current) stamp.textContent = current;
+  }
   if (!media.paused && !document.hidden) frame = requestAnimationFrame(tick);
 }
 
@@ -44,6 +56,7 @@ for (const option of trackButtons) option.addEventListener("click", () => {
   track = next;
   const piece = performances[track];
   media.src = "/audio/" + piece.file;
+  playhead.hidden = true;
   title.textContent = piece.title;
   notice.textContent = "";
   for (const button of trackButtons) button.setAttribute("aria-pressed", String(option === button));
@@ -59,6 +72,13 @@ play.addEventListener("click", async () => {
   }
 });
 
+position.addEventListener("input", () => { media.currentTime = position.valueAsNumber; });
+media.addEventListener("loadedmetadata", () => {
+  if (!Number.isFinite(media.duration)) return;
+  position.max = String(media.duration);
+  playhead.hidden = false;
+  update();
+});
 for (const event of ["play", "pause", "ended", "seeking", "seeked"]) media.addEventListener(event, update);
 document.addEventListener("visibilitychange", update);
 motion.addEventListener("change", draw);

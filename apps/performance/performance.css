@@ -35,7 +35,10 @@ button { cursor: pointer; }
   font-size: 12px; letter-spacing: .045em;
 }
 .tracks button[aria-pressed="true"], .tracks button:hover { color: #edf8ff; border-bottom-color: #a5d9ec; }
-#notice { position: absolute; margin: 8px 0 0; color: #d7e5f5; font-size: 12px; }
+.playhead:not([hidden]) { position: absolute; display: flex; align-items: center; gap: 10px; margin-top: 10px; width: 260px; max-width: 84vw; }
+.playhead input { flex: 1; min-width: 0; margin: 0; accent-color: #a5d9ec; cursor: ew-resize; }
+.playhead output { color: #c7d4e6; font: 11px ui-monospace, monospace; white-space: nowrap; }
+#notice { position: absolute; margin: 34px 0 0; color: #d7e5f5; font-size: 12px; }
 #notice:empty { display: none; }
 @media (max-aspect-ratio: 4/5) {
   main { align-items: end; background-image: url("/prism-standby-portrait.webp"); }

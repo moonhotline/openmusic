@@ -24,6 +24,10 @@
         <button type="button" data-track="agi" aria-pressed="false">AGI</button>
         <button type="button" data-track="mist" aria-pressed="false">Mist</button>
       </div>
+      <div id="playhead" class="playhead" hidden>
+        <input id="position" type="range" min="0" max="1" step="0.01" value="0" aria-label="演出进度">
+        <output id="stamp" for="position" aria-live="off"></output>
+      </div>
       <p id="notice" role="status"></p>
     </div>
     <audio id="master" preload="none" src="/audio/faith.flac"></audio>
