@@ -13,7 +13,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open `http://localhost:4173`. The example opens with a pending proposal. Play A and B, jump to the fifth bar, then accept or reject the proposal. The local decision survives reload. Import a new proposal in the review panel to keep iterating.
+Open `http://localhost:4173`. The example opens with a pending proposal. Play A and B, jump to the fifth bar, then accept or reject the proposal. Audition playback attenuates louder variants towards the same RMS level. The WAV export preserves the authored mix. The local decision survives reload. Import a new proposal in the review panel to keep iterating.
 
 ## Run the music harness
 

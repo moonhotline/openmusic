@@ -1,0 +1,8 @@
+node_modules/
+dist/
+out/
+target/
+__pycache__/
+.wrangler/
+.dev.vars*
+.env*

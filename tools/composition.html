@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>OpenMusic</title>
+<script src="./gsap.min.js"></script>
+<style>
+  html,body { margin:0; width:1280px; height:720px; overflow:hidden; background:#110d1b; color:#f4e8ff; font-family:system-ui,sans-serif; }
+  #openmusic { position:relative; width:1280px; height:720px; background:radial-gradient(ellipse at 67% 47%,#292042,#14101e 62%); }
+  canvas { position:absolute; right:0; top:0; width:1060px; height:720px; }
+  h1 { position:absolute; left:74px; bottom:100px; max-width:520px; margin:0; font-size:96px; line-height:.97; letter-spacing:-.055em; font-weight:350; }
+  p { position:absolute; left:78px; bottom:54px; margin:0; color:#c7a6ec; font-size:18px; letter-spacing:.12em; }
+</style>
+</head>
+<body>
+<main id="openmusic" data-composition-id="openmusic" data-start="0" data-duration="__SECONDS__" data-width="1280" data-height="720">
+  <canvas id="prism" width="1060" height="720"></canvas>
+  <h1>__TITLE__</h1>
+  <p>OPENMUSIC</p>
+  <audio id="master" src="./master.wav" data-start="0" data-duration="__SECONDS__" data-track-index="1" data-volume="1"></audio>
+</main>
+<script>
+__PRISM__
+const score = __TIMELINE__;
+const canvas = document.getElementById("prism");
+const drawing = canvas.getContext("2d");
+const cues = score.cues.toReversed();
+const cursor = { time: 0 };
+function draw() {
+  const beat = cursor.time * score.bpm / 60;
+  const cue = cues.find((entry) => entry.beat <= beat);
+  const index = Math.min(score.waveform.length - 1, Math.floor(cursor.time / score.seconds * score.waveform.length));
+  drawPrism(drawing, canvas.width, canvas.height, cursor.time, score.waveform[index] || 0, cue?.preset === "dispersion");
+}
+const timeline = gsap.timeline({ paused: true });
+timeline.to(cursor, { time: score.seconds, duration: score.seconds, ease: "none", onUpdate: draw });
+window.__timelines = { openmusic: timeline };
+draw();
+</script>
+</body>
+</html>

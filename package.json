@@ -1,0 +1,21 @@
+{
+  "name": "openmusic",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": "^24.0.0"
+  },
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "dev": "node tools/build.mjs --serve",
+    "music": "node tools/music.mjs",
+    "regression": "node tools/regression.mjs",
+    "check": "tsc",
+    "build:worker": "node tools/build-worker.mjs"
+  },
+  "devDependencies": {
+    "gsap": "3.13.0",
+    "typescript": "6.0.3"
+  }
+}

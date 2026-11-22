@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#100d1b">
+  <meta name="description" content="OpenMusic 将乐谱代码编译成音乐和音画作品。">
+  <title>OpenMusic</title>
+  <link rel="stylesheet" href="./studio.css">
+  <script type="module" src="./apps/studio/main.js"></script>
+</head>
+<body>
+  <header class="page-header">
+    <a class="identity" href="./" aria-label="OpenMusic 首页"><span class="mark" aria-hidden="true"></span>OpenMusic</a>
+    <div class="header-actions">
+      <a href="https://github.com/moonhotline/openmusic">源代码</a>
+      <button id="export" class="quiet" type="button">导出 WAV</button>
+    </div>
+  </header>
+  <main>
+    <section class="hero" aria-labelledby="score-title">
+      <canvas id="prism" aria-hidden="true"></canvas>
+      <div class="hero-content">
+        <p id="tempo" class="track-meta">105 BPM <span>·</span> 8 小节</p>
+        <h1 id="score-title">Glass<br>Meridian</h1>
+        <p class="genre">Synthwave × 管弦乐</p>
+        <button id="play" class="primary" type="button">播放</button>
+      </div>
+      <div class="transport">
+        <div id="wave" class="wave" aria-hidden="true"></div>
+        <input id="seek" type="range" min="0" max="18.29" step="0.01" value="0" aria-label="播放位置">
+        <div class="timeline">
+          <output id="time" for="seek">0:00 / 0:18</output>
+          <button id="cue" type="button">跳到第 5 小节</button>
+        </div>
+      </div>
+    </section>
+    <div class="desk">
+      <section class="tracks" aria-labelledby="tracks-title">
+        <div class="section-header"><h2 id="tracks-title">乐谱</h2><span id="revision"></span></div>
+        <ol id="tracks"></ol>
+      </section>
+      <section class="review" aria-labelledby="review-title">
+        <div class="section-header"><h2 id="review-title">Agent 提案</h2><span id="review-state"></span></div>
+        <p id="summary"></p>
+        <div id="auditions" class="auditions" role="group" aria-label="选择试听版本">
+          <button id="baseline" type="button" aria-pressed="true">A 当前版本</button>
+          <button id="candidate" type="button" aria-pressed="false">B 提案版本</button>
+        </div>
+        <div id="decision" class="decision">
+          <button id="accept" class="primary" type="button">采纳</button>
+          <button id="reject" class="quiet" type="button">驳回</button>
+        </div>
+        <details class="details">
+          <summary>导入 Agent 提案</summary>
+          <form id="import">
+            <label for="proposal">提案 JSON</label>
+            <textarea id="proposal" rows="5" required spellcheck="false"></textarea>
+            <button class="quiet" type="submit">加载提案</button>
+          </form>
+        </details>
+        <details class="details">
+          <summary>连接共享项目</summary>
+          <form id="connect">
+            <label for="endpoint">Cloudflare Worker 地址</label>
+            <input id="endpoint" type="url" required placeholder="https://…workers.dev">
+            <label for="review-token">审核令牌</label>
+            <input id="review-token" type="password" required autocomplete="off">
+            <button class="quiet" type="submit">连接或刷新</button>
+          </form>
+        </details>
+        <p id="notice" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
