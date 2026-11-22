@@ -63,10 +63,15 @@
           <summary>连接共享项目</summary>
           <form id="connect">
             <label for="endpoint">Cloudflare Worker 地址</label>
-            <input id="endpoint" type="url" required placeholder="https://…workers.dev">
+            <input id="endpoint" type="url" required value="https://openmusic.moonhotline.workers.dev">
             <label for="review-token">审核令牌</label>
             <input id="review-token" type="password" required autocomplete="off">
             <button class="quiet" type="submit">连接或刷新</button>
+          </form>
+          <form id="cloud-audio" hidden>
+            <label for="gain-db">流式处理增益（dB）</label>
+            <input id="gain-db" type="number" min="-60" max="18" step="any" value="0" required>
+            <button id="cloud-export" class="quiet" type="submit">云端处理并导出 WAV</button>
           </form>
         </details>
         <p id="notice" role="status" aria-live="polite"></p>

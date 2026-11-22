@@ -9,6 +9,7 @@ interface Store {
 interface ProjectState { storage: Store & { transaction<T>(operation: (store: Store) => Promise<T>): Promise<T> } }
 interface Env {
   PROJECT: { idFromName(name: string): object; get(id: object): { fetch(request: Request): Promise<Response> } };
+  AUDIO?: { fetch(request: Request): Promise<Response> };
   AGENT_TOKEN?: string;
   REVIEW_TOKEN?: string;
   STUDIO_ORIGINS?: string;
@@ -83,8 +84,9 @@ export default {
     const headers = new Headers({ Vary: "Origin" });
     if (allowOrigin) {
       headers.set("Access-Control-Allow-Origin", origin!);
-      headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+      headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Sample-Rate, X-Channels");
       headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      headers.set("Access-Control-Expose-Headers", "X-Sample-Rate, X-Channels");
     }
     if (request.method === "OPTIONS") return new Response(null, { status: allowOrigin ? 204 : 403, headers });
     const withCors = (response: Response) => {
@@ -96,13 +98,20 @@ export default {
     const view = path === "/v1/project" && request.method === "GET";
     const propose = path === "/v1/proposals" && request.method === "POST";
     const review = path === "/v1/decision" && request.method === "POST";
-    if (!view && !propose && !review) return withCors(json({ error: "Not found" }, 404));
+    const audio = path === "/v1/audio/pcm" && request.method === "POST";
+    if (!view && !propose && !review && !audio) return withCors(json({ error: "Not found" }, 404));
     if (origin && !allowOrigin) return withCors(json({ error: "Origin not allowed" }, 403));
     const token = request.headers.get("authorization");
     const isAgent = matches(token, env.AGENT_TOKEN);
     const isReviewer = matches(token, env.REVIEW_TOKEN);
-    if ((view && !isAgent && !isReviewer) || (propose && !isAgent) || (review && !isReviewer)) {
+    if (((view || audio) && !isAgent && !isReviewer) || (propose && !isAgent) || (review && !isReviewer)) {
       return withCors(json({ error: "Unauthorized for this action" }, 401));
+    }
+    if (audio) {
+      if (!env.AUDIO) return withCors(json({ error: "Audio processing is unavailable" }, 503));
+      const stream = new Request(request);
+      stream.headers.delete("Authorization");
+      return withCors(await env.AUDIO.fetch(stream));
     }
     return withCors(await env.PROJECT.get(env.PROJECT.idFromName("glass-meridian")).fetch(request));
   },

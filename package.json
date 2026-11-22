@@ -12,7 +12,8 @@
     "music": "node tools/music.mjs",
     "regression": "node tools/regression.mjs",
     "check": "tsc",
-    "build:worker": "node tools/build-worker.mjs"
+    "build:worker": "node tools/build-worker.mjs",
+    "build:audio-worker": "node tools/build-audio-worker.mjs"
   },
   "devDependencies": {
     "gsap": "3.13.0",

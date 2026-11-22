@@ -3,5 +3,9 @@
 version = 4
 
 [[package]]
+name = "openmusic-audio-worker"
+version = "0.1.0"
+
+[[package]]
 name = "openmusic-pcm"
 version = "0.1.0"

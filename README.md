@@ -2,6 +2,8 @@
 
 ![OpenMusic promotional banner with a glass prism refracting an audio waveform](assets/brand/openmusic-hero.png)
 
+[Open the studio](https://openmusic-five.vercel.app/)
+
 OpenMusic is a programmable music studio for people and agents. An agent can change notes, rebalance tracks, and place visual cues in a revisioned proposal. A person auditions the current score and the proposal at the same position before accepting or rejecting it.
 
 The first piece, **Glass Meridian**, is an original eight-bar synthwave and chamber-string arrangement at 105 BPM. Its score contains seven synthesized tracks. The browser plays rendered PCM with Web Audio while a seekable Canvas prism reacts to cues on the score clock.
@@ -43,8 +45,21 @@ Vercel builds the dependency-free static studio using `node tools/build.mjs`. Th
 | GET | `/v1/project` | Agent or reviewer |
 | POST | `/v1/proposals` | Agent |
 | POST | `/v1/decision` | Reviewer |
+| POST | `/v1/audio/pcm` | Agent or reviewer |
 
 Set `OPENMUSIC_WORKER` and `OPENMUSIC_AGENT_TOKEN` in the agent runner, then run `pnpm music project` and `pnpm music submit out/proposal.json`. Read the current revision before drafting a proposal. A proposal says what to change and declares its base revision. The reviewer connects using their own token in the studio. A stale proposal or conflicting pending edit returns `409`. The reviewer can export a draft WAV for listening before committing a score version.
+
+## Stream audio through Rust
+
+The [OpenMusic API](https://openmusic.moonhotline.workers.dev/health) authenticates the request and forwards the body to the private `openmusic-audio` Worker through the `AUDIO` service binding. The Worker frames the byte stream and passes blocks to a Rust/WASM kernel for gain and PCM16 saturation. It preserves the sample rate, channel count and frame count. In the studio, connect the shared project to process and export the current audition. Agents can process a WAV from the CLI with their existing Worker connection.
+
+```sh
+pnpm music process out/baseline.wav --gain-db=-6 --out out/attenuated.wav
+```
+
+Send raw little-endian PCM16 to `POST /v1/audio/pcm?gainDb=-6` with `Content-Type: audio/pcm`, `X-Sample-Rate` and `X-Channels`. The endpoint accepts mono and stereo at 8–192 kHz, up to 32 MiB per stream, with gain from −60 to +18 dB. The response uses the same format. A malformed stream discovered after response headers aborts the body. The CLI checks output length before publishing the new WAV.
+
+Install the `wasm32-unknown-unknown` Rust target and run `pnpm build:audio-worker`. Deploy `out/audio-worker/index.js` and `audio.wasm` as a private Cloudflare Worker with the `AUDIO` binding in the public API.
 
 ## Repository layout
 
@@ -52,6 +67,7 @@ Set `OPENMUSIC_WORKER` and `OPENMUSIC_AGENT_TOKEN` in the agent runner, then run
 | --- | --- |
 | `apps/studio` | Web Audio transport, review UI, background render worker |
 | `apps/worker` | Cloudflare API and transactional review state |
+| `apps/audio-worker` | Private Rust Worker for streaming PCM processing |
 | `packages/score` | Score validation, beat-to-sample compiler, proposal and review state |
 | `packages/audio` | Deterministic synthesis, stereo mix, PCM/WAV and metrics |
 | `packages/prism` | Time-addressable prism drawing shared by studio and HyperFrames |

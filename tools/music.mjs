@@ -6,10 +6,11 @@ import { parseArgs } from "node:util";
 import { analyze, renderScore, wav } from "../packages/audio/index.ts";
 import { applyProposal, compileScore, frameAtBeat, validateScore } from "../packages/score/index.ts";
 import { score as defaultScore, demoProposal } from "../examples/glass-meridian/score.ts";
+import { processWav } from "./audio-stream.mjs";
 
 const { positionals: [command, input], values } = parseArgs({
   allowPositionals: true,
-  options: { out: { type: "string" }, bars: { type: "string" }, proposal: { type: "string" } },
+  options: { out: { type: "string" }, bars: { type: "string" }, proposal: { type: "string" }, "gain-db": { type: "string" } },
 });
 
 const json = (data) => JSON.stringify(data, null, 2) + "\n";
@@ -38,16 +39,21 @@ async function save(path, contents) {
   await writeFile(path, contents);
 }
 
-async function remote(path, payload) {
+function workerConnection() {
   const { OPENMUSIC_WORKER, OPENMUSIC_AGENT_TOKEN } = process.env;
   if (!OPENMUSIC_WORKER || !OPENMUSIC_AGENT_TOKEN) throw new Error("Set OPENMUSIC_WORKER and OPENMUSIC_AGENT_TOKEN");
   const endpoint = new URL(OPENMUSIC_WORKER);
   if (endpoint.protocol !== "https:" && !(endpoint.protocol === "http:" && ["localhost", "127.0.0.1"].includes(endpoint.hostname))) {
     throw new Error("The shared Worker requires HTTPS");
   }
+  return { endpoint, token: OPENMUSIC_AGENT_TOKEN };
+}
+
+async function remote(path, payload) {
+  const { endpoint, token } = workerConnection();
   const result = await fetch(new URL(path, endpoint), {
     method: payload ? "POST" : "GET",
-    headers: { Authorization: "Bearer " + OPENMUSIC_AGENT_TOKEN, "Content-Type": "application/json" },
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
     body: payload,
     redirect: "error",
   });
@@ -83,6 +89,9 @@ try {
     process.stdout.write(json(await remote("/v1/proposals", await readFile(input, "utf8"))));
   } else if (command === "project") {
     process.stdout.write(json(await remote("/v1/project")));
+  } else if (command === "process") {
+    if (!input || !values.out) throw new Error("Usage: pnpm music process INPUT.wav --gain-db=-6 --out OUTPUT.wav");
+    process.stdout.write(json(await processWav(input, values.out, values["gain-db"] ?? "0", workerConnection())));
   } else if (["check", "render", "video"].includes(command)) {
     const base = await readScore(input);
     const proposal = values.proposal ? JSON.parse(await readFile(values.proposal, "utf8")) : null;
@@ -106,6 +115,7 @@ try {
     console.log("pnpm music <check|render|video> [score.ts] [--proposal proposal.json] [--out path]");
     console.log("pnpm music render --bars 5:8");
     console.log("pnpm music <demo-proposal|project|submit PROPOSAL.json>");
+    console.log("pnpm music process INPUT.wav --gain-db=-6 --out OUTPUT.wav");
     if (command) process.exitCode = 1;
   }
 } catch (error) {

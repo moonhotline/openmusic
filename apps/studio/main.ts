@@ -163,6 +163,7 @@ function showWorkspace() {
   byId("auditions").hidden = !workspace.pending;
   byId("decision").hidden = !workspace.pending;
   byId("import").parentElement!.hidden = Boolean(cloud);
+  byId("cloud-audio").hidden = !cloud;
   for (const id of ["baseline", "candidate", "accept", "reject"]) button(id).disabled = busy;
   button("baseline").setAttribute("aria-pressed", String(selected === "A"));
   button("candidate").setAttribute("aria-pressed", String(selected === "B"));
@@ -197,6 +198,7 @@ async function refresh() {
   showWorkspace();
   button("play").disabled = true;
   button("export").disabled = true;
+  button("cloud-export").disabled = true;
   button("play").textContent = "生成试听…";
   try {
     const result = await render(visibleScore);
@@ -211,6 +213,7 @@ async function refresh() {
     }));
     button("play").disabled = false;
     button("export").disabled = false;
+    button("cloud-export").disabled = processingAudio;
     button("play").textContent = "播放";
     if (wasPlaying) play();
     else paint();
@@ -274,14 +277,73 @@ button("baseline").addEventListener("click", () => { if (selected !== "A") { sel
 button("candidate").addEventListener("click", () => { if (selected !== "B") { selected = "B"; void refresh(); } });
 button("accept").addEventListener("click", () => void review(true));
 button("reject").addEventListener("click", () => void review(false));
-button("export").addEventListener("click", () => {
-  if (!rendered) return;
-  const url = URL.createObjectURL(new Blob([wav(rendered.pcm)], { type: "audio/wav" }));
+function downloadWav(bytes: ArrayBuffer, name: string) {
+  const url = URL.createObjectURL(new Blob([bytes], { type: "audio/wav" }));
   const link = document.createElement("a");
   link.href = url;
-  link.download = selected === "B" ? "glass-meridian-proposal.wav" : "glass-meridian.wav";
+  link.download = name + ".wav";
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportName() {
+  return selected === "B" ? "glass-meridian-proposal" : "glass-meridian";
+}
+
+button("export").addEventListener("click", () => {
+  if (rendered) downloadWav(wav(rendered.pcm), exportName());
+});
+
+let processingAudio = false;
+byId("cloud-audio").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!rendered || !cloud || processingAudio) return;
+  processingAudio = true;
+  button("cloud-export").disabled = true;
+  const name = exportName();
+  try {
+    const bytes = wav(rendered.pcm);
+    const samples = new Uint8Array(bytes, 44);
+    const endpoint = new URL("/v1/audio/pcm", cloud.endpoint);
+    endpoint.searchParams.set("gainDb", byId<HTMLInputElement>("gain-db").value);
+    notify("正在通过 Rust Worker 处理音频…");
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + cloud.token, "Content-Type": "audio/pcm", "X-Sample-Rate": String(SAMPLE_RATE), "X-Channels": "2" },
+      body: samples,
+      redirect: "error",
+    });
+    if (!response.ok || !response.body || response.headers.get("Content-Type") !== "audio/pcm") {
+      await response.body?.cancel();
+      throw new Error("音频处理失败（HTTP " + response.status + "）。");
+    }
+    if (response.headers.get("X-Sample-Rate") !== String(SAMPLE_RATE) || response.headers.get("X-Channels") !== "2") {
+      await response.body.cancel();
+      throw new Error("音频输出格式与当前乐谱不符。");
+    }
+    let offset = 0;
+    const reader = response.body.getReader();
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (offset + value.length > samples.length) throw new Error("音频输出长度超出预期。");
+        samples.set(value, offset);
+        offset += value.length;
+      }
+      if (offset !== samples.length) throw new Error("音频输出不完整。");
+    } finally {
+      await reader.cancel().catch(() => {});
+      reader.releaseLock();
+    }
+    downloadWav(bytes, name + "-processed");
+    notify("音频处理完成，WAV 已导出。");
+  } catch (error) {
+    notify(message(error));
+  } finally {
+    processingAudio = false;
+    button("cloud-export").disabled = !rendered;
+  }
 });
 byId("import").addEventListener("submit", (event) => {
   event.preventDefault();

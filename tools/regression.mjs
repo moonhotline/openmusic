@@ -30,6 +30,31 @@ const reviewer = env.REVIEW_TOKEN;
 assert.equal((await request("/v1/project", null)).status, 401);
 assert.equal((await request("/v1/project", reviewer, null, "https://unrecognized.test")).status, 403);
 assert.equal((await request("/v1/proposals", reviewer, demoProposal)).status, 401);
+
+function pcmRequest(token) {
+  const headers = { "Content-Type": "audio/pcm", "X-Sample-Rate": "48000", "X-Channels": "2", Origin: "https://studio.test" };
+  if (token) headers.Authorization = "Bearer " + token;
+  return new Request("https://worker.test/v1/audio/pcm?gainDb=-6", { method: "POST", headers, body: new Uint8Array([1, 2, 3, 4]) });
+}
+
+assert.equal((await worker.fetch(pcmRequest(), env)).status, 401);
+assert.equal((await worker.fetch(pcmRequest(agent), env)).status, 503);
+const bound = {
+  ...env,
+  AUDIO: { async fetch(incoming) {
+    assert.equal(incoming.headers.get("Authorization"), null);
+    assert.equal(incoming.bodyUsed, false);
+    assert.equal(new URL(incoming.url).searchParams.get("gainDb"), "-6");
+    return new Response(incoming.body, { headers: { "Content-Type": "audio/pcm", "X-Sample-Rate": "48000", "X-Channels": "2" } });
+  } },
+};
+for (const token of [agent, reviewer]) {
+  const response = await worker.fetch(pcmRequest(token), bound);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Access-Control-Allow-Origin"), "https://studio.test");
+  assert.match(response.headers.get("Access-Control-Expose-Headers"), /X-Channels/);
+  assert.deepEqual([...new Uint8Array(await response.arrayBuffer())], [1, 2, 3, 4]);
+}
 const pending = await request("/v1/proposals", agent, demoProposal);
 assert.equal(pending.status, 200);
 assert.equal((await pending.json()).pending.id, demoProposal.id);
