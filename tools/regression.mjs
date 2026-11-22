@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { analyze, renderScore, wav } from "../packages/audio/index.ts";
 import { applyProposal, frameAtBeat } from "../packages/score/index.ts";
 import { demoProposal, score } from "../examples/glass-meridian/score.ts";
+import { prismFrame } from "../packages/prism/index.ts";
 import worker, { MusicProject } from "../apps/worker/index.ts";
 
 const values = new Map();
@@ -75,6 +76,18 @@ assert.equal((await request("/v1/proposals", agent, demoProposal)).status, 409);
 
 const a = renderScore(score);
 const b = renderScore(result.score);
+const start = frameAtBeat(16, score.bpm);
+const end = frameAtBeat(20, score.bpm);
+for (const channel of ["left", "right"]) {
+  assert.ok(Buffer.from(a[channel].buffer, 0, start * 4).equals(Buffer.from(b[channel].buffer, 0, start * 4)));
+  assert.ok(Buffer.from(a[channel].buffer, end * 4).equals(Buffer.from(b[channel].buffer, end * 4)));
+  assert.ok(!Buffer.from(a[channel].buffer, start * 4, (end - start) * 4)
+    .equals(Buffer.from(b[channel].buffer, start * 4, (end - start) * 4)));
+}
+const time = 16 * 60 / score.bpm;
+assert.equal(prismFrame(time - 1 / 30, score.bpm, result.score.cues).dispersion, 0);
+assert.ok(prismFrame(time + 1 / 30, score.bpm, result.score.cues).dispersion > 0);
+assert.equal(prismFrame(time + 1 / 30, score.bpm, score.cues).dispersion, 0);
 const metrics = analyze(b);
 assert.equal(metrics.frames, frameAtBeat(32, 105));
 assert.equal(metrics.clippedSamples, 0);

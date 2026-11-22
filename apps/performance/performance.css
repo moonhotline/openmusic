@@ -1,0 +1,45 @@
+:root {
+  color-scheme: dark;
+  font-family: "Inter", system-ui, sans-serif;
+  background: #080b17;
+  color: #f1f5fb;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+main {
+  display: grid; position: relative; isolation: isolate; align-items: center;
+  min-height: 100vh; min-height: 100svh; overflow: hidden;
+  background: #080b17 url("/prism-standby.webp") center / cover no-repeat;
+}
+#prism, .veil { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
+#prism { opacity: 0; }
+#prism[data-ready] { opacity: 1; }
+.veil { background: linear-gradient(90deg, #060911bd 0%, #06091163 32%, transparent 68%); }
+.performance { padding: 32px 7vw; position: relative; justify-self: start; width: 100%; }
+h1 { margin: 0 0 clamp(25px, 5vh, 48px); font-size: clamp(76px, 12vw, 190px); font-weight: 630; line-height: .85; letter-spacing: -.078em; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+button, a { font: inherit; -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+.actions > * {
+  display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 8px 17px;
+  background: #0c15246b; border: 1px solid #b7cbea57; color: #e9f2ff; border-radius: 5px;
+  text-decoration: none; font-size: 13px; font-weight: 550; backdrop-filter: blur(10px);
+}
+.actions button { background: #e3f4f8; color: #101b28; border-color: transparent; }
+.actions a:hover { background: #293b59bb; }
+.actions button:hover { background: #fff; }
+:focus-visible { outline: 2px solid #b2ebff; outline-offset: 4px; }
+.tracks { margin: 19px 0 0; display: flex; gap: 16px; }
+.tracks button {
+  background: none; color: #a3b2ca; border: 0; padding: 5px 0 6px; min-height: 36px; border-bottom: 1px solid transparent;
+  font-size: 12px; letter-spacing: .045em;
+}
+.tracks button[aria-pressed="true"], .tracks button:hover { color: #edf8ff; border-bottom-color: #a5d9ec; }
+#notice { position: absolute; margin: 8px 0 0; color: #d7e5f5; font-size: 12px; }
+#notice:empty { display: none; }
+@media (max-aspect-ratio: 4/5) {
+  main { align-items: end; background-image: url("/prism-standby-portrait.webp"); }
+  .veil { background: linear-gradient(0deg, #060911d9, #06091124 51%, transparent 72%); }
+  .performance { padding: 26px 24px clamp(42px, 10svh, 96px); }
+  h1 { font-size: clamp(70px, 20vw, 135px); margin-bottom: 28px; }
+}

@@ -3,54 +3,55 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#100d1b">
-  <meta name="description" content="OpenMusic 将乐谱代码编译成音乐和音画作品。">
-  <title>OpenMusic</title>
-  <link rel="stylesheet" href="./studio.css">
-  <script type="module" src="./apps/studio/main.js"></script>
+  <meta name="theme-color" content="#10131b">
+  <title>OpenMusic Studio</title>
+  <link rel="stylesheet" href="/studio/studio.css">
+  <script type="module" src="/apps/studio/main.js"></script>
 </head>
 <body>
   <header class="page-header">
-    <a class="identity" href="./" aria-label="OpenMusic 首页"><span class="mark" aria-hidden="true"></span>OpenMusic</a>
-    <div class="header-actions">
-      <a href="https://github.com/moonhotline/openmusic">源代码</a>
-      <button id="export" class="quiet" type="button">导出 WAV</button>
-    </div>
+    <a class="identity" href="/">OpenMusic</a>
+    <button id="export" class="quiet" type="button">导出 WAV</button>
   </header>
-  <main>
-    <section class="hero" aria-labelledby="score-title">
-      <canvas id="prism" aria-hidden="true"></canvas>
-      <div class="hero-content">
-        <p id="tempo" class="track-meta">105 BPM <span>·</span> 8 小节</p>
-        <h1 id="score-title">Glass<br>Meridian</h1>
-        <p class="genre">Synthwave × 管弦乐</p>
-        <button id="play" class="primary" type="button">播放</button>
-      </div>
-      <div class="transport">
-        <div id="wave" class="wave" aria-hidden="true"></div>
-        <input id="seek" type="range" min="0" max="18.29" step="0.01" value="0" aria-label="播放位置">
-        <div class="timeline">
-          <output id="time" for="seek">0:00 / 0:18</output>
-          <button id="cue" type="button">跳到第 5 小节</button>
-        </div>
-      </div>
-    </section>
+  <main class="workspace">
+    <div class="project-header">
+      <div><h1 id="score-title"></h1><p id="tempo"></p></div>
+      <span id="revision"></span>
+    </div>
     <div class="desk">
-      <section class="tracks" aria-labelledby="tracks-title">
-        <div class="section-header"><h2 id="tracks-title">乐谱</h2><span id="revision"></span></div>
-        <ol id="tracks"></ol>
+      <section class="arrangement" aria-label="多轨乐谱">
+        <div class="transport">
+          <button id="play" class="primary" type="button">播放</button>
+          <div class="scrub">
+            <div id="wave" class="wave" aria-hidden="true"></div>
+            <input id="seek" type="range" min="0" max="18.29" step="any" value="0" aria-label="播放位置">
+          </div>
+          <output id="time" for="seek"></output>
+        </div>
+        <div class="track-scroll">
+          <div class="track-grid">
+            <div class="ruler"><span>音轨</span><div id="bars" aria-label="小节尺"></div><span>增益</span></div>
+            <ol id="tracks"></ol>
+          </div>
+        </div>
+        <details class="details reference">
+          <summary>《Mist》参考母带</summary>
+          <audio controls preload="none" src="/audio/mist.wav"></audio>
+        </details>
       </section>
       <section class="review" aria-labelledby="review-title">
         <div class="section-header"><h2 id="review-title">Agent 提案</h2><span id="review-state"></span></div>
         <p id="summary"></p>
+        <ul id="changes"></ul>
         <div id="auditions" class="auditions" role="group" aria-label="选择试听版本">
-          <button id="baseline" type="button" aria-pressed="true">A 当前版本</button>
-          <button id="candidate" type="button" aria-pressed="false">B 提案版本</button>
+          <button id="baseline" type="button" aria-pressed="true">A · 当前</button>
+          <button id="candidate" type="button" aria-pressed="false">B · 提案</button>
         </div>
         <div id="decision" class="decision">
           <button id="accept" class="primary" type="button">采纳</button>
           <button id="reject" class="quiet" type="button">驳回</button>
         </div>
+        <p id="notice" role="status" aria-live="polite"></p>
         <details class="details">
           <summary>导入 Agent 提案</summary>
           <form id="import">
@@ -74,7 +75,6 @@
             <button id="cloud-export" class="quiet" type="submit">云端处理并导出 WAV</button>
           </form>
         </details>
-        <p id="notice" role="status" aria-live="polite"></p>
       </section>
     </div>
   </main>

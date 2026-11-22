@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080b17">
+  <meta name="description" content="在 OpenMusic 试听 Faith 和 AGI，或打开音乐工作台。">
+  <title>OpenMusic</title>
+  <link rel="stylesheet" href="/performance.css">
+  <script type="module" src="/apps/performance/main.js"></script>
+</head>
+<body>
+  <main>
+    <canvas id="prism" aria-hidden="true"></canvas>
+    <div class="veil" aria-hidden="true"></div>
+    <div class="performance">
+      <h1 id="title">Faith</h1>
+      <div class="actions">
+        <button id="play" type="button">播放《Faith》</button>
+        <a href="/studio/">打开工作台</a>
+      </div>
+      <div class="tracks" role="group" aria-label="选择作品">
+        <button type="button" data-track="faith" aria-pressed="true">Faith</button>
+        <button type="button" data-track="agi" aria-pressed="false">AGI</button>
+        <button type="button" data-track="mist" aria-pressed="false">Mist</button>
+      </div>
+      <p id="notice" role="status"></p>
+    </div>
+    <audio id="master" preload="none" src="/audio/faith.flac"></audio>
+  </main>
+</body>
+</html>

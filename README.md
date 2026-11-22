@@ -6,7 +6,7 @@
 
 OpenMusic is a programmable music studio for people and agents. An agent can change notes, rebalance tracks, and place visual cues in a revisioned proposal. A person auditions the current score and the proposal at the same position before accepting or rejecting it.
 
-The first piece, **Glass Meridian**, is an original eight-bar synthwave and chamber-string arrangement at 105 BPM. Its score contains seven synthesized tracks. The browser plays rendered PCM with Web Audio while a seekable Canvas prism reacts to cues on the score clock.
+The performance page plays **Faith** and **AGI**, two original scores built from recorded orchestral instruments and programmable synths. **Mist** is the reference master from Retro Hotline. The browser and HyperFrames use the same WebGL prism and beat cues. The studio opens **Glass Meridian**, an eight-bar score with seven individually rendered tracks.
 
 ## Run the studio
 
@@ -17,7 +17,7 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open `http://localhost:4173`. The example opens with a pending proposal. Play A and B, jump to the fifth bar, then accept or reject the proposal. Audition playback attenuates louder variants towards the same RMS level. The WAV export preserves the authored mix. The local decision survives reload. Import a new proposal in the review panel to keep iterating.
+Open `http://localhost:4173` for the performances, or `/studio/` for the editable score. The studio opens with a pending proposal. Select the gain change to seek to bar 5, switch between A and B at the same position, then accept or reject it. Both variants use the same playback gain. The WAV export preserves the authored mix. The local decision survives reload. Import a new proposal in the review panel to keep iterating.
 
 ## Run the music harness
 
@@ -34,6 +34,19 @@ cargo run --release -p openmusic-pcm -- out/baseline.wav
 ```
 
 Bar ranges use inclusive, one-based numbers. To author another piece, pass a local TypeScript module exporting a score, or a score JSON file, to `check`, `render`, or `video`. Rendering from TypeScript executes that local module. Only load code from a trusted workspace.
+
+## Original performances
+
+`examples/releases/arrangement.py` contains the notes, voicings and dynamics. `performances.ts` assigns the visual cues. The scored recordings use [VSCO 2 CE](https://github.com/sgossner/VSCO-2-CE/tree/440300901dfe9275fd84e0b7763af1f8443ae62e) at `440300901dfe`, published under CC0. To reproduce the masters, use Python with NumPy and SciPy, FFmpeg, and a checkout of those samples.
+
+```sh
+python examples/releases/render.py --samples /path/to/VSCO-2-CE --stems out/release-stems
+pnpm music video --performance faith --out out/faith-film
+pnpm music video --performance agi --out out/agi-film
+npx --yes hyperframes@0.9.80 render out/faith-film --output "$PWD/out/faith.mp4"
+```
+
+The stem export contains aligned stereo WAVs, a room return and the note data. `examples/mist/master.wav` is the original stereo master from [Retro Hotline](https://github.com/moonhotline/retro-hotline/blob/445c9c4378a1913f28fd07ef15fc5ecf96c8b7ac/frontend/public/audio/bgm_menu.wav).
 
 ## Shared review
 
@@ -65,13 +78,15 @@ Install the `wasm32-unknown-unknown` Rust target and run `pnpm build:audio-worke
 
 | Area | Contents |
 | --- | --- |
+| `apps/performance` | Fullscreen WebGL stage and direct master playback |
 | `apps/studio` | Web Audio transport, review UI, background render worker |
 | `apps/worker` | Cloudflare API and transactional review state |
 | `apps/audio-worker` | Private Rust Worker for streaming PCM processing |
 | `packages/score` | Score validation, beat-to-sample compiler, proposal and review state |
 | `packages/audio` | Deterministic synthesis, stereo mix, PCM/WAV and metrics |
-| `packages/prism` | Time-addressable prism drawing shared by studio and HyperFrames |
+| `packages/prism` | Time-addressable WebGL prism shared by the performance page and HyperFrames |
 | `examples/glass-meridian` | Original score and example proposal |
+| `examples/releases` | Faith and AGI scores, sampler, masters and performance cues |
 | `crates/openmusic-pcm` | Streaming Rust PCM inspection |
 | `tools` | CLI, HyperFrames composition, Python analysis and regression run |
 

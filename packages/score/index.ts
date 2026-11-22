@@ -3,11 +3,13 @@ export const VOICES = ["arp", "bass", "strings", "lead", "kick", "snare", "hat"]
 
 export type Voice = typeof VOICES[number];
 export type Note = { beat: number; length: number; midi: number; velocity: number };
-export type Track = { id: string; name: string; voice: Voice; gainDb: number; pan: number; notes: Note[] };
+export type GainRange = { startBeat: number; endBeat: number; deltaDb: number };
+export type Track = { id: string; name: string; voice: Voice; gainDb: number; pan: number; notes: Note[]; gainRanges?: GainRange[] };
 export type Cue = { beat: number; preset: "mist" | "dispersion" };
 export type Score = { schemaVersion: 1; title: string; bpm: number; bars: number; seed: number; tracks: Track[]; cues: Cue[] };
 export type Change =
   | { op: "track-gain"; trackId: string; gainDb: number }
+  | ({ op: "track-gain-range"; trackId: string } & GainRange)
   | { op: "note-upsert"; trackId: string; index: number; note: Note }
   | { op: "cue"; cue: Cue };
 export type Proposal = { id: string; baseRevision: number; summary: string; changes: Change[] };
@@ -43,6 +45,11 @@ function validCue(cue: unknown, beats: number): cue is Cue {
     && (cue.preset === "mist" || cue.preset === "dispersion");
 }
 
+function validGainRange(range: unknown, beats: number): range is GainRange {
+  return record(range) && within(range.startBeat, 0, beats) && within(range.endBeat, 0, beats)
+    && range.endBeat - range.startBeat >= 1 / 64 && within(range.deltaDb, -24, 12);
+}
+
 export function validateScore(value: unknown): asserts value is Score {
   if (!record(value) || value.schemaVersion !== 1 || typeof value.title !== "string" || !value.title.trim()
     || value.title.length > 100 || !within(value.bpm, 45, 220) || !integer(value.bars, 1, 32)
@@ -59,6 +66,11 @@ export function validateScore(value: unknown): asserts value is Score {
       || track.notes.length > 512 || !track.notes.every((note) => validNote(note, beats))) {
       throw new Error("Invalid track or note");
     }
+    if (track.gainRanges !== undefined && (!Array.isArray(track.gainRanges) || track.gainRanges.length > 128
+      || !track.gainRanges.every((range, index, ranges) => validGainRange(range, beats)
+        && (index === 0 || ranges[index - 1].endBeat <= range.startBeat)))) {
+      throw new Error("Invalid or overlapping gain automation");
+    }
     ids.add(track.id);
   }
   if (!value.cues.every((cue) => validCue(cue, beats))) throw new Error("Invalid visual cue");
@@ -74,6 +86,9 @@ export function compileScore(score: Score) {
     durationFrames: frameAtBeat(score.bars * 4, score.bpm),
     tracks: score.tracks.map((track) => ({
       ...track,
+      gainFrames: track.gainRanges?.map(range => ({ ...range,
+        start: frameAtBeat(range.startBeat, score.bpm), end: frameAtBeat(range.endBeat, score.bpm),
+      })),
       notes: track.notes.map((note) => ({
         ...note,
         startFrame: frameAtBeat(note.beat, score.bpm),
@@ -113,6 +128,10 @@ export function applyProposal(score: Score, input: unknown): Score {
 
     if (change.op === "track-gain" && within(change.gainDb, -60, 6)) {
       track.gainDb = change.gainDb;
+    } else if (change.op === "track-gain-range" && validGainRange(change, beats)) {
+      const { startBeat, endBeat, deltaDb } = change;
+      const ranges = (track.gainRanges ?? []).filter(range => range.startBeat !== startBeat || range.endBeat !== endBeat);
+      track.gainRanges = [...ranges, { startBeat, endBeat, deltaDb }].sort((a, b) => a.startBeat - b.startBeat);
     } else if (change.op === "note-upsert" && integer(change.index, 0, track.notes.length)
       && validNote(change.note, beats)) {
       track.notes[change.index] = change.note;

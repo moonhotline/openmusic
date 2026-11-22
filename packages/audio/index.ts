@@ -22,17 +22,30 @@ export function renderScore(score: Score): Stereo {
     const leftGain = Math.cos(pan) * gain;
     const rightGain = Math.sin(pan) * gain;
     const wet = track.voice === "strings" || track.voice === "lead" ? 0.24 : track.voice === "arp" ? 0.18 : 0;
+    let automation: Float32Array | undefined;
+    if (track.gainFrames?.length) {
+      automation = new Float32Array(compiled.durationFrames);
+      automation.fill(1);
+      for (const { start, end, deltaDb } of track.gainFrames) {
+        const ramp = Math.min(Math.round(SAMPLE_RATE * 0.008), (end - start) / 2);
+        const delta = 10 ** (deltaDb / 20) - 1;
+        for (let frame = start; frame < end; frame++) {
+          automation[frame] = 1 + delta * Math.min(1, (frame - start) / ramp, (end - frame) / ramp);
+        }
+      }
+    }
 
     for (const [index, note] of track.notes.entries()) {
       const voice = makeVoice(track.voice, note.midi, score.seed ^ Math.imul(note.midi + 3, index + 177));
       for (let i = 0; i < note.lengthFrames; i++) {
         const sample = voice(i, note.lengthFrames) * note.velocity;
         const frame = note.startFrame + i;
-        left[frame] += sample * leftGain;
-        right[frame] += sample * rightGain;
+        const dryGain = automation?.[frame] ?? 1;
+        left[frame] += sample * leftGain * dryGain;
+        right[frame] += sample * rightGain * dryGain;
         if (!wet) continue;
-        if (frame + nearDelay < left.length) left[frame + nearDelay] += sample * rightGain * wet * 0.66;
-        if (frame + crossDelay < right.length) right[frame + crossDelay] += sample * leftGain * wet;
+        if (frame + nearDelay < left.length) left[frame + nearDelay] += sample * rightGain * wet * 0.66 * (automation?.[frame + nearDelay] ?? 1);
+        if (frame + crossDelay < right.length) right[frame + crossDelay] += sample * leftGain * wet * (automation?.[frame + crossDelay] ?? 1);
       }
     }
   }

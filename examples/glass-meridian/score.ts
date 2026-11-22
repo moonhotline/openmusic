@@ -37,19 +37,17 @@ export const score: Score = {
     { id: "snare", name: "Snare", voice: "snare", gainDb: -17, pan: -0.06, notes: drums([1, 3], 38, 0.28, 0.8) },
     { id: "hat", name: "Hi-hat", voice: "hat", gainDb: -23, pan: 0.32, notes: drums([0.5, 1.02, 1.55, 2.5, 3.03, 3.57], 42, 0.16, 0.62) },
   ],
-  cues: [{ beat: 0, preset: "mist" }, { beat: 16, preset: "dispersion" }],
+  cues: [{ beat: 0, preset: "mist" }],
 };
 
 validateScore(score);
 
 export const demoProposal: Proposal = {
-  id: "wider-strings",
+  id: "lift-strings-bar-five",
   baseRevision: 0,
-  summary: "抬高弦乐声部，收紧鼓组，让第 5 小节的弦乐与棱镜更突出。",
+  summary: "第 5 小节抬升弦乐，并在第一拍展开棱镜。",
   changes: [
-    { op: "track-gain", trackId: "strings", gainDb: -8 },
-    { op: "track-gain", trackId: "snare", gainDb: -20 },
-    { op: "track-gain", trackId: "hat", gainDb: -25 },
-    { op: "note-upsert", trackId: "lead", index: lead.findIndex((event) => event.beat === 16), note: note(16, 0.84, 81, 0.71) },
+    { op: "track-gain-range", trackId: "strings", startBeat: 16, endBeat: 20, deltaDb: 5 },
+    { op: "cue", cue: { beat: 16, preset: "dispersion" } },
   ],
 };
