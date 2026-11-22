@@ -1,5 +1,7 @@
 # OpenMusic
 
+![OpenMusic promotional banner with a glass prism refracting an audio waveform](assets/brand/openmusic-hero.png)
+
 OpenMusic is a programmable music studio for people and agents. An agent can change notes, rebalance tracks, and place visual cues in a revisioned proposal. A person auditions the current score and the proposal at the same position before accepting or rejecting it.
 
 The first piece, **Glass Meridian**, is an original eight-bar synthwave and chamber-string arrangement at 105 BPM. Its score contains seven synthesized tracks. The browser plays rendered PCM with Web Audio while a seekable Canvas prism reacts to cues on the score clock.
